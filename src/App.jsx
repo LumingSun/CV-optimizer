@@ -56,12 +56,29 @@ const initialResumeData = {
 };
 
 // --- API Helpers ---
-const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiUrl) => {
-  // OpenAI chat/completions 兼容格式
+const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiUrl, modelName = "gpt-3.5-turbo") => {
+  // 构建更详细的 prompt
+  const fullPrompt = `
+    ${systemInstruction}
+    \nCurrent Resume JSON Data:
+    ${JSON.stringify(currentData)}
+    \nUser Request: ${prompt}
+    \nREQUIREMENTS:
+    1. Analyze the request.
+    2. If the user wants to update the resume, return a VALID JSON object matching the structure.
+    3. IMPROVE the content based on professional resume standards.
+    4. You can also reorder sections if the user asks (e.g. "put education first") by modifying the "sectionOrder" array in the JSON.
+    \nRESPONSE FORMAT (Strict JSON):
+    {
+      "data": { ...updated resume object... },
+      "analysis": "Brief explanation...",
+      "suggestions": ["Suggestion 1", "Suggestion 2"]
+    }
+  `;
+
   const messages = [
-    systemInstruction ? { role: "system", content: systemInstruction } : null,
-    { role: "user", content: `当前简历JSON：${JSON.stringify(currentData)}\n用户请求：${prompt}\n请返回严格JSON格式：{data, analysis, suggestions}` }
-  ].filter(Boolean);
+    { role: "user", content: fullPrompt }
+  ];
 
   try {
     const response = await fetch(apiUrl, {
@@ -71,7 +88,7 @@ const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiU
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo", // 可让用户自定义，默认兼容
+        model: modelName, // 使用用户自定义模型名
         messages,
         temperature: 0.7,
         max_tokens: 1024
@@ -81,7 +98,9 @@ const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiU
     const result = await response.json();
     // 兼容 OpenAI 格式
     const text = result.choices?.[0]?.message?.content || "";
-    return JSON.parse(text);
+    // 去除 markdown 代码块包裹
+    const cleanText = text.replace(/^```json\s*|```$/g, '').trim();
+    return JSON.parse(cleanText);
   } catch (error) {
     console.error("LLM API Error:", error);
     throw error;
@@ -251,7 +270,6 @@ const ChatInterface = ({ onOptimize, isProcessing, chatHistory, setShowApiConfig
           <Sparkles className="w-5 h-5 text-indigo-500" />
           AI 简历优化助手
         </h3>
-        {/* 设置按钮替换原“Gemini-2.5 Powered”位置 */}
         <button
           onClick={() => setShowApiConfig(true)}
           className="flex items-center gap-1 px-3 py-1.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold shadow-sm transition-all"
@@ -324,20 +342,24 @@ const ChatInterface = ({ onOptimize, isProcessing, chatHistory, setShowApiConfig
 };
 
 // --- API Key Config Modal ---
-function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl }) {
+function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl, modelName, setModelName }) {
   const [key, setKey] = useState(apiKey || "");
   const [url, setUrl] = useState(apiUrl || "https://api.openai.com/v1/chat/completions");
+  const [model, setModel] = useState(modelName || "gpt-3.5-turbo");
 
   useEffect(() => {
     setKey(apiKey || "");
     setUrl(apiUrl || "https://api.openai.com/v1/chat/completions");
-  }, [apiKey, apiUrl, show]);
+    setModel(modelName || "gpt-3.5-turbo");
+  }, [apiKey, apiUrl, modelName, show]);
 
   const handleSave = () => {
     setApiKey(key);
     setApiUrl(url);
+    setModelName(model);
     localStorage.setItem("resume_api_key", key);
     localStorage.setItem("resume_api_url", url);
+    localStorage.setItem("resume_model_name", model);
     onClose();
   };
 
@@ -369,12 +391,22 @@ function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl })
             placeholder="https://api.openai.com/v1/chat/completions"
           />
         </div>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-slate-500 mb-1">Model Name</label>
+          <input
+            className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            type="text"
+            value={model}
+            onChange={e => setModel(e.target.value)}
+            placeholder="gpt-3.5-turbo 或 moonshot-v1 或 azure-model 等"
+          />
+        </div>
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
           <button onClick={handleSave} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200">保存</button>
         </div>
         <div className="mt-4 text-xs text-slate-400">
-          支持 OpenAI、Azure、Moonshot、智谱等兼容接口。Key 和地址仅保存在本地浏览器。
+          支持 OpenAI、Azure、Moonshot、智谱等兼容接口。Key、地址和模型名仅保存在本地浏览器。
         </div>
       </div>
     </div>
@@ -391,10 +423,20 @@ export default function App() {
   const [chatHistory, setChatHistory] = useState([]);
   const [jobDescription, setJobDescription] = useState("");
   const [showJobModal, setShowJobModal] = useState(false);
-  // 新增 API Key/API URL 状态
+  // 新增 API Key/API URL/Model Name 状态
   const [apiKey, setApiKey] = useState(localStorage.getItem("resume_api_key") || "");
   const [apiUrl, setApiUrl] = useState(localStorage.getItem("resume_api_url") || "https://api.openai.com/v1/chat/completions");
+  const [modelName, setModelName] = useState(localStorage.getItem("resume_model_name") || "gpt-3.5-turbo");
   const [showApiConfig, setShowApiConfig] = useState(false);
+
+  // 每次弹窗关闭时自动同步最新 localStorage
+  useEffect(() => {
+    if (!showApiConfig) {
+      setApiKey(localStorage.getItem("resume_api_key") || "");
+      setApiUrl(localStorage.getItem("resume_api_url") || "https://api.openai.com/v1/chat/completions");
+      setModelName(localStorage.getItem("resume_model_name") || "gpt-3.5-turbo");
+    }
+  }, [showApiConfig]);
 
   // Handle AI Optimization Request
   const handleOptimize = async (promptText) => {
@@ -406,7 +448,7 @@ export default function App() {
       if (jobDescription) {
         context = `The user is applying for this job description: \"${jobDescription}\". Tailor the resume keywords and tone to match.`;
       }
-      const result = await callLLM(promptText, resumeData, context, apiKey, apiUrl);
+      const result = await callLLM(promptText, resumeData, context, apiKey, apiUrl, modelName);
       if (result.analysis) {
         setChatHistory(prev => [...prev, { role: 'ai', content: result.analysis }]);
       }
@@ -702,14 +744,6 @@ export default function App() {
         {/* --- 设置按钮恢复到底部 --- */}
         <div className="mt-auto w-full flex flex-col items-center gap-4 pb-2">
           <div className="w-full border-t border-slate-800 mb-2"></div>
-          {/* <button 
-            onClick={() => setShowApiConfig(true)}
-            className="w-full flex flex-col items-center gap-1 p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg"
-            title="API Key设置"
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-xs font-bold">设置</span>
-          </button> */}
           <button 
             onClick={handlePrint} 
             className="p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
@@ -872,6 +906,7 @@ export default function App() {
         onClose={() => setShowApiConfig(false)} 
         apiKey={apiKey} setApiKey={setApiKey}
         apiUrl={apiUrl} setApiUrl={setApiUrl}
+        modelName={modelName} setModelName={setModelName}
       />
 
       {/* Mobile Overlay Warning */}
