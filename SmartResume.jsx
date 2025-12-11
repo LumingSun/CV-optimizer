@@ -20,9 +20,6 @@ import {
   ArrowDown
 } from 'lucide-react';
 
-// --- Global API Configuration ---
-const apiKey = ""; 
-
 // --- Initial Mock Data ---
 const initialResumeData = {
   personalInfo: {
@@ -59,48 +56,34 @@ const initialResumeData = {
 };
 
 // --- API Helpers ---
-const callGemini = async (prompt, currentData, systemInstruction = "") => {
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-  
-  const fullPrompt = `
-    ${systemInstruction}
-    
-    Current Resume JSON Data:
-    ${JSON.stringify(currentData)}
-
-    User Request: ${prompt}
-
-    REQUIREMENTS:
-    1. Analyze the request.
-    2. If the user wants to update the resume, return a VALID JSON object matching the structure.
-    3. IMPROVE the content based on professional resume standards.
-    4. You can also reorder sections if the user asks (e.g. "put education first") by modifying the "sectionOrder" array in the JSON.
-    
-    RESPONSE FORMAT (Strict JSON):
-    {
-      "data": { ...updated resume object... },
-      "analysis": "Brief explanation...",
-      "suggestions": ["Suggestion 1", "Suggestion 2"]
-    }
-  `;
+const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiUrl) => {
+  // OpenAI chat/completions 兼容格式
+  const messages = [
+    systemInstruction ? { role: "system", content: systemInstruction } : null,
+    { role: "user", content: `当前简历JSON：${JSON.stringify(currentData)}\n用户请求：${prompt}\n请返回严格JSON格式：{data, analysis, suggestions}` }
+  ].filter(Boolean);
 
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: { responseMimeType: "application/json" }
+        model: "gpt-3.5-turbo", // 可让用户自定义，默认兼容
+        messages,
+        temperature: 0.7,
+        max_tokens: 1024
       })
     });
-
     if (!response.ok) throw new Error("API call failed");
-    
     const result = await response.json();
-    const text = result.candidates[0].content.parts[0].text;
+    // 兼容 OpenAI 格式
+    const text = result.choices?.[0]?.message?.content || "";
     return JSON.parse(text);
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("LLM API Error:", error);
     throw error;
   }
 };
@@ -332,6 +315,64 @@ const ChatInterface = ({ onOptimize, isProcessing, chatHistory }) => {
   );
 };
 
+// --- API Key Config Modal ---
+function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl }) {
+  const [key, setKey] = useState(apiKey || "");
+  const [url, setUrl] = useState(apiUrl || "https://api.openai.com/v1/chat/completions");
+
+  useEffect(() => {
+    setKey(apiKey || "");
+    setUrl(apiUrl || "https://api.openai.com/v1/chat/completions");
+  }, [apiKey, apiUrl, show]);
+
+  const handleSave = () => {
+    setApiKey(key);
+    setApiUrl(url);
+    localStorage.setItem("resume_api_key", key);
+    localStorage.setItem("resume_api_url", url);
+    onClose();
+  };
+
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-indigo-600" />
+          LLM API Key 配置
+        </h3>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-slate-500 mb-1">API Key</label>
+          <input
+            className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            type="text"
+            value={key}
+            onChange={e => setKey(e.target.value)}
+            placeholder="sk-... 或 moonshot-... 或 azure-..."
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-slate-500 mb-1">API 地址</label>
+          <input
+            className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            type="text"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://api.openai.com/v1/chat/completions"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
+          <button onClick={handleSave} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200">保存</button>
+        </div>
+        <div className="mt-4 text-xs text-slate-400">
+          支持 OpenAI、Azure、Moonshot、智谱等兼容接口。Key 和地址仅保存在本地浏览器。
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Main App Component ---
 
 export default function App() {
@@ -342,35 +383,33 @@ export default function App() {
   const [chatHistory, setChatHistory] = useState([]);
   const [jobDescription, setJobDescription] = useState("");
   const [showJobModal, setShowJobModal] = useState(false);
+  // 新增 API Key/API URL 状态
+  const [apiKey, setApiKey] = useState(localStorage.getItem("resume_api_key") || "");
+  const [apiUrl, setApiUrl] = useState(localStorage.getItem("resume_api_url") || "https://api.openai.com/v1/chat/completions");
+  const [showApiConfig, setShowApiConfig] = useState(false);
 
   // Handle AI Optimization Request
   const handleOptimize = async (promptText) => {
     if (!promptText) return;
-    
     setChatHistory(prev => [...prev, { role: 'user', content: promptText }]);
     setIsProcessing(true);
-
     try {
       let context = "";
       if (jobDescription) {
-        context = `The user is applying for this job description: "${jobDescription}". Tailor the resume keywords and tone to match.`;
+        context = `The user is applying for this job description: \"${jobDescription}\". Tailor the resume keywords and tone to match.`;
       }
-
-      const result = await callGemini(promptText, resumeData, context);
-
+      const result = await callLLM(promptText, resumeData, context, apiKey, apiUrl);
       if (result.analysis) {
         setChatHistory(prev => [...prev, { role: 'ai', content: result.analysis }]);
       }
-
       if (result.data) {
-        // Ensure sectionOrder exists in new data, defaulting to current or standard
         if (!result.data.sectionOrder) {
           result.data.sectionOrder = resumeData.sectionOrder || ['summary', 'education', 'experience', 'skills'];
         }
         setResumeData(result.data);
       }
     } catch (error) {
-      setChatHistory(prev => [...prev, { role: 'ai', content: "抱歉，连接 AI 服务时出现问题。请稍后再试或检查 API Key。" }]);
+      setChatHistory(prev => [...prev, { role: 'ai', content: "抱歉，连接 LLM 服务时出现问题。请检查 API Key 或接口地址。" }]);
     } finally {
       setIsProcessing(false);
     }
@@ -623,7 +662,17 @@ export default function App() {
     <div className="flex h-screen w-full bg-slate-100 font-sans overflow-hidden text-slate-800">
       
       {/* Left Sidebar: Navigation & Tools */}
-      <div className="w-16 bg-slate-900 flex flex-col items-center py-6 gap-6 z-20">
+      <div className="w-16 bg-slate-900 flex flex-col items-center py-6 gap-6 z-20 relative overflow-y-auto" style={{minHeight: '100vh'}}>
+        {/* --- 设置按钮和调试文字移到顶部 --- */}
+        <button 
+          onClick={() => setShowApiConfig(true)}
+          className="w-full flex flex-col items-center gap-1 p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg mb-2"
+          title="API Key设置"
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-xs font-bold">设置</span>
+        </button>
+        <div className="text-xs text-red-500 font-bold mb-2 text-center">API Key 设置入口（如未显示请反馈）</div>
         <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold mb-4 shadow-lg shadow-indigo-500/30">
           R
         </div>
@@ -652,8 +701,19 @@ export default function App() {
           <Briefcase className="w-5 h-5" />
         </button>
 
-        <div className="mt-auto flex flex-col gap-4">
-           <button 
+        {/* --- 优化设置按钮 --- */}
+        <div className="mt-auto w-full flex flex-col items-center gap-4 pb-2">
+          <div className="w-full border-t border-slate-800 mb-2"></div>
+          <button 
+            onClick={() => setShowApiConfig(true)}
+            className="w-full flex flex-col items-center gap-1 p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg"
+            title="API Key设置"
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-xs font-bold">设置</span>
+          </button>
+          <div className="text-xs text-red-500 font-bold mt-2 text-center">API Key 设置入口（如未显示请反馈）</div>
+          <button 
             onClick={handlePrint} 
             className="p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
             title="导出 PDF"
@@ -807,6 +867,14 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* API Key 配置弹窗 */}
+      <ApiConfigModal 
+        show={showApiConfig} 
+        onClose={() => setShowApiConfig(false)} 
+        apiKey={apiKey} setApiKey={setApiKey}
+        apiUrl={apiUrl} setApiUrl={setApiUrl}
+      />
 
       {/* Mobile Overlay Warning */}
       <div className="lg:hidden fixed inset-0 bg-slate-900/90 z-50 flex flex-col items-center justify-center text-white p-8 text-center backdrop-blur">
