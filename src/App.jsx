@@ -56,7 +56,7 @@ const initialResumeData = {
 };
 
 // --- API Helpers ---
-const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiUrl, modelName = "gpt-3.5-turbo") => {
+const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiUrl, modelName = "deepseek-ai/DeepSeek-V3.2") => {
   // 构建更详细的 prompt
   const fullPrompt = `
     ${systemInstruction}
@@ -343,14 +343,14 @@ const ChatInterface = ({ onOptimize, isProcessing, chatHistory, setShowApiConfig
 
 // --- API Key Config Modal ---
 function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl, modelName, setModelName }) {
-  const [key, setKey] = useState(apiKey || "");
-  const [url, setUrl] = useState(apiUrl || "https://api.openai.com/v1/chat/completions");
-  const [model, setModel] = useState(modelName || "gpt-3.5-turbo");
+  const [key, setKey] = useState(apiKey || "sk-bgeqblmourfwapodlkvlmlskxymdweztafwqgokhktmpigea");
+  const [url, setUrl] = useState(apiUrl || "https://api.siliconflow.cn/v1/chat/completions");
+  const [model, setModel] = useState(modelName || "deepseek-ai/DeepSeek-V3.2");
 
   useEffect(() => {
-    setKey(apiKey || "");
-    setUrl(apiUrl || "https://api.openai.com/v1/chat/completions");
-    setModel(modelName || "gpt-3.5-turbo");
+    setKey(apiKey || "sk-bgeqblmourfwapodlkvlmlskxymdweztafwqgokhktmpigea");
+    setUrl(apiUrl || "https://api.siliconflow.cn/v1/chat/completions");
+    setModel(modelName || "deepseek-ai/DeepSeek-V3.2");
   }, [apiKey, apiUrl, modelName, show]);
 
   const handleSave = () => {
@@ -388,7 +388,7 @@ function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl, m
             type="text"
             value={url}
             onChange={e => setUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1/chat/completions"
+            placeholder="https://api.siliconflow.cn/v1/chat/completions"
           />
         </div>
         <div className="mb-4">
@@ -398,7 +398,7 @@ function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl, m
             type="text"
             value={model}
             onChange={e => setModel(e.target.value)}
-            placeholder="gpt-3.5-turbo 或 moonshot-v1 或 azure-model 等"
+            placeholder="deepseek-ai/DeepSeek-V3.2 或 moonshot-v1 或 azure-model 等"
           />
         </div>
         <div className="flex justify-end gap-2">
@@ -424,17 +424,17 @@ export default function App() {
   const [jobDescription, setJobDescription] = useState("");
   const [showJobModal, setShowJobModal] = useState(false);
   // 新增 API Key/API URL/Model Name 状态
-  const [apiKey, setApiKey] = useState(localStorage.getItem("resume_api_key") || "");
-  const [apiUrl, setApiUrl] = useState(localStorage.getItem("resume_api_url") || "https://api.openai.com/v1/chat/completions");
-  const [modelName, setModelName] = useState(localStorage.getItem("resume_model_name") || "gpt-3.5-turbo");
+  const [apiKey, setApiKey] = useState(localStorage.getItem("resume_api_key") || "sk-bgeqblmourfwapodlkvlmlskxymdweztafwqgokhktmpigea");
+  const [apiUrl, setApiUrl] = useState(localStorage.getItem("resume_api_url") || "https://api.siliconflow.cn/v1/chat/completions");
+  const [modelName, setModelName] = useState(localStorage.getItem("resume_model_name") || "deepseek-ai/DeepSeek-V3.2");
   const [showApiConfig, setShowApiConfig] = useState(false);
 
   // 每次弹窗关闭时自动同步最新 localStorage
   useEffect(() => {
     if (!showApiConfig) {
-      setApiKey(localStorage.getItem("resume_api_key") || "");
-      setApiUrl(localStorage.getItem("resume_api_url") || "https://api.openai.com/v1/chat/completions");
-      setModelName(localStorage.getItem("resume_model_name") || "gpt-3.5-turbo");
+      setApiKey(localStorage.getItem("resume_api_key") || "sk-bgeqblmourfwapodlkvlmlskxymdweztafwqgokhktmpigea");
+      setApiUrl(localStorage.getItem("resume_api_url") || "https://api.siliconflow.cn/v1/chat/completions");
+      setModelName(localStorage.getItem("resume_model_name") || "deepseek-ai/DeepSeek-V3.2");
     }
   }, [showApiConfig]);
 

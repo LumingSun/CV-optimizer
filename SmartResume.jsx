@@ -71,7 +71,7 @@ const callLLM = async (prompt, currentData, systemInstruction = "", apiKey, apiU
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo", // 可让用户自定义，默认兼容
+        model: "deepseek-ai/DeepSeek-V3.2", // 可让用户自定义，默认兼容
         messages,
         temperature: 0.7,
         max_tokens: 1024
@@ -318,11 +318,11 @@ const ChatInterface = ({ onOptimize, isProcessing, chatHistory }) => {
 // --- API Key Config Modal ---
 function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl }) {
   const [key, setKey] = useState(apiKey || "");
-  const [url, setUrl] = useState(apiUrl || "https://api.openai.com/v1/chat/completions");
+  const [url, setUrl] = useState(apiUrl || "https://api.siliconflow.cn/v1/chat/completions");
 
   useEffect(() => {
     setKey(apiKey || "");
-    setUrl(apiUrl || "https://api.openai.com/v1/chat/completions");
+    setUrl(apiUrl || "https://api.siliconflow.cn/v1/chat/completions");
   }, [apiKey, apiUrl, show]);
 
   const handleSave = () => {
@@ -358,7 +358,7 @@ function ApiConfigModal({ show, onClose, apiKey, setApiKey, apiUrl, setApiUrl })
             type="text"
             value={url}
             onChange={e => setUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1/chat/completions"
+            placeholder="https://api.siliconflow.cn/v1/chat/completions"
           />
         </div>
         <div className="flex justify-end gap-2">
@@ -385,7 +385,7 @@ export default function App() {
   const [showJobModal, setShowJobModal] = useState(false);
   // 新增 API Key/API URL 状态
   const [apiKey, setApiKey] = useState(localStorage.getItem("resume_api_key") || "");
-  const [apiUrl, setApiUrl] = useState(localStorage.getItem("resume_api_url") || "https://api.openai.com/v1/chat/completions");
+  const [apiUrl, setApiUrl] = useState(localStorage.getItem("resume_api_url") || "https://api.siliconflow.cn/v1/chat/completions");
   const [showApiConfig, setShowApiConfig] = useState(false);
 
   // Handle AI Optimization Request

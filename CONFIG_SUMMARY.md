@@ -46,7 +46,7 @@
 ### 1️⃣ 安装依赖
 
 ```bash
-cd /Volumes/external/luming/consume-optimizer
+cd /Volumes/external/luming/CV-optimizer
 npm install
 ```
 
@@ -98,7 +98,7 @@ npm run dev
 ## 💾 项目结构说明
 
 ```
-consume-optimizer/
+CV-optimizer/
 │
 ├── 🎯 源代码
 │   └── src/

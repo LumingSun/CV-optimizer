@@ -55,7 +55,7 @@ src/
 ### 步骤 1️⃣：安装依赖（1-2 分钟）
 
 ```bash
-cd /Volumes/external/luming/consume-optimizer
+cd /Volumes/external/luming/CV-optimizer
 npm install
 ```
 

@@ -6,7 +6,7 @@
 
 ### 生成的文件结构
 ```
-consume-optimizer/
+CV-optimizer/
 ├── src/
 │   ├── App.jsx              ✅ 主应用组件（已配置）
 │   ├── main.jsx             ✅ React 入口
@@ -27,7 +27,7 @@ consume-optimizer/
 
 在终端中运行：
 ```bash
-cd /Volumes/external/luming/consume-optimizer
+cd /Volumes/external/luming/CV-optimizer
 npm install
 ```
 
