@@ -16,7 +16,7 @@
 ### 步骤 1：准备环境
 
 ```bash
-cd /Volumes/external/luming/consume-google
+cd /Volumes/external/luming/consume-optimizer
 
 # 如果未安装依赖
 npm install
@@ -140,7 +140,7 @@ npm run preview
 
 ```js
 export default defineConfig({
-  base: '/consume-google/',  // 替换为你的仓库名
+  base: '/consume-optimizer/',  // 替换为你的仓库名
   // ... 其他配置
 })
 ```
@@ -171,7 +171,7 @@ jobs:
 ```
 
 3. 推送到 GitHub
-4. 访问 `https://yourusername.github.io/consume-google/`
+4. 访问 `https://yourusername.github.io/consume-optimizer/`
 
 ### 方案 4：Docker 部署
 

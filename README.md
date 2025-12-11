@@ -21,7 +21,7 @@
 ### 1. 安装依赖
 
 ```bash
-cd /Volumes/external/luming/consume-google
+cd /Volumes/external/luming/consume-optimizer
 npm install
 ```
 
@@ -76,7 +76,7 @@ npm run preview
 ## 项目结构
 
 ```
-consume-google/
+consume-optimizer/
 ├── src/
 │   ├── App.jsx          # 主应用组件
 │   ├── main.jsx         # React 入口
